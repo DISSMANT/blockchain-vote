@@ -32,9 +32,14 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
     autoMine: true,
   });
 
-  // Get the deployed contract to interact with it after deploying.
   const yourContract = await hre.ethers.getContract<Contract>("YourContract", deployer);
-  console.log("👋 Initial greeting:", await yourContract.greeting());
+  // Если кандидаты не были добавлены, можно просто убрать этот вызов или заменить его на что-то актуальное,
+  // например, вывести сообщение о том, что контракт успешно задеплоен.
+  console.log("YourContract deployed at:", yourContract.address);
+
+  // Или, если вы добавляете кандидатов сразу после деплоя, можно вывести их количество:
+  const candidateCount = await yourContract.getCandidatesCount();
+  console.log("Number of candidates:", candidateCount);
 };
 
 export default deployYourContract;

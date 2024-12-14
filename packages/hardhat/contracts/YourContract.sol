@@ -1,70 +1,97 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
-// Useful for debugging. Remove when deploying to a live network.
 import "hardhat/console.sol";
 
-// Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
-// import "@openzeppelin/contracts/access/Ownable.sol";
-
-/**
- * A smart contract that allows changing a state variable of the contract and tracking the changes
- * It also allows the owner to withdraw the Ether in the contract
- * @author BuidlGuidl
- */
 contract YourContract {
-    // State Variables
     address public immutable owner;
-    string public greeting = "Building Unstoppable Apps!!!";
-    bool public premium = false;
-    uint256 public totalCounter = 0;
-    mapping(address => uint) public userGreetingCounter;
 
-    // Events: a way to emit log statements from smart contract that can be listened to by external parties
-    event GreetingChange(address indexed greetingSetter, string newGreeting, bool premium, uint256 value);
+    struct Candidate {
+        string name;
+        uint voteCount;
+    }
 
-    // Constructor: Called once on contract deployment
-    // Check packages/hardhat/deploy/00_deploy_your_contract.ts
+    Candidate[] public candidates;
+
+    mapping(address => bool) public hasVoted;
+
+    event CandidateAdded(address indexed addedBy, string candidateName);
+    event Voted(address indexed voter, uint candidateIndex);
+
     constructor(address _owner) {
         owner = _owner;
     }
 
-    // Modifier: used to define a set of rules that must be met before or after a function is executed
-    // Check the withdraw() function
     modifier isOwner() {
-        // msg.sender: predefined variable that represents address of the account that called the current function
         require(msg.sender == owner, "Not the Owner");
         _;
     }
 
     /**
-     * Function that allows anyone to change the state variable "greeting" of the contract and increase the counters
-     *
-     * @param _newGreeting (string memory) - new greeting to save on the contract
+     * Добавление кандидатов — только для владельца
      */
-    function setGreeting(string memory _newGreeting) public payable {
-        // Print data to the hardhat chain console. Remove when deploying to a live network.
-        console.log("Setting new greeting '%s' from %s", _newGreeting, msg.sender);
+    function addCandidate(string memory _name) public isOwner {
+        candidates.push(Candidate({
+            name: _name,
+            voteCount: 0
+        }));
 
-        // Change state variables
-        greeting = _newGreeting;
-        totalCounter += 1;
-        userGreetingCounter[msg.sender] += 1;
-
-        // msg.value: built-in global variable that represents the amount of ether sent with the transaction
-        if (msg.value > 0) {
-            premium = true;
-        } else {
-            premium = false;
-        }
-
-        // emit: keyword used to trigger an event
-        emit GreetingChange(msg.sender, _newGreeting, msg.value > 0, msg.value);
+        emit CandidateAdded(msg.sender, _name);
     }
 
     /**
-     * Function that allows the owner to withdraw all the Ether in the contract
-     * The function can only be called by the owner of the contract as defined by the isOwner modifier
+     * Голосование за кандидата по индексу
+     */
+    function vote(uint candidateIndex) public {
+        require(candidateIndex < candidates.length, "Invalid candidate index");
+        require(!hasVoted[msg.sender], "You have already voted");
+
+        candidates[candidateIndex].voteCount += 1;
+        hasVoted[msg.sender] = true;
+
+        emit Voted(msg.sender, candidateIndex);
+    }
+
+    /**
+     * Получение количества кандидатов
+     */
+    function getCandidatesCount() public view returns (uint) {
+        return candidates.length;
+    }
+
+    /**
+     * Получение информации о кандидате по индексу
+     */
+    function getCandidate(uint index) public view returns (string memory name, uint votes) {
+        require(index < candidates.length, "Invalid index");
+        Candidate memory c = candidates[index];
+        return (c.name, c.voteCount);
+    }
+
+    function getAllCandidates() public view returns (Candidate[] memory) {
+        return candidates;
+    }
+
+    /**
+     * Определение победителя
+     */
+    function getWinner() public view returns (uint winnerIndex, uint winnerVotes) {
+        require(candidates.length > 0, "No candidates");
+        uint maxVotes = 0;
+        uint index = 0;
+
+        for (uint i = 0; i < candidates.length; i++) {
+            if (candidates[i].voteCount > maxVotes) {
+                maxVotes = candidates[i].voteCount;
+                index = i;
+            }
+        }
+
+        return (index, maxVotes);
+    }
+
+    /**
+     * Функция вывода всех средств только для владельца
      */
     function withdraw() public isOwner {
         (bool success, ) = owner.call{ value: address(this).balance }("");
@@ -72,7 +99,7 @@ contract YourContract {
     }
 
     /**
-     * Function that allows the contract to receive ETH
+     * Функция, позволяющая контракту принимать ETH
      */
     receive() external payable {}
 }
