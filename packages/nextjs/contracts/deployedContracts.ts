@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      address: "0x9A676e781A523b5d0C0e43731313A708CB607508",
       abi: [
         {
           inputs: [
@@ -19,44 +19,6 @@ const deployedContracts = {
           ],
           stateMutability: "nonpayable",
           type: "constructor",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "addedBy",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "string",
-              name: "candidateName",
-              type: "string",
-            },
-          ],
-          name: "CandidateAdded",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "voter",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "candidateIndex",
-              type: "uint256",
-            },
-          ],
-          name: "Voted",
-          type: "event",
         },
         {
           inputs: [
@@ -88,11 +50,49 @@ const deployedContracts = {
             },
             {
               internalType: "uint256",
-              name: "voteCount",
+              name: "votes",
               type: "uint256",
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "zabava",
+              type: "uint256",
+            },
+          ],
+          name: "empty",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "string",
+                  name: "name",
+                  type: "string",
+                },
+                {
+                  internalType: "uint256",
+                  name: "votes",
+                  type: "uint256",
+                },
+              ],
+              internalType: "struct YourContract.Candidate",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "endVoting",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -108,7 +108,7 @@ const deployedContracts = {
                 },
                 {
                   internalType: "uint256",
-                  name: "voteCount",
+                  name: "votes",
                   type: "uint256",
                 },
               ],
@@ -131,14 +131,21 @@ const deployedContracts = {
           name: "getCandidate",
           outputs: [
             {
-              internalType: "string",
-              name: "name",
-              type: "string",
-            },
-            {
-              internalType: "uint256",
-              name: "votes",
-              type: "uint256",
+              components: [
+                {
+                  internalType: "string",
+                  name: "name",
+                  type: "string",
+                },
+                {
+                  internalType: "uint256",
+                  name: "votes",
+                  type: "uint256",
+                },
+              ],
+              internalType: "struct YourContract.Candidate",
+              name: "",
+              type: "tuple",
             },
           ],
           stateMutability: "view",
@@ -211,7 +218,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "candidateIndex",
+              name: "index",
               type: "uint256",
             },
           ],
@@ -222,14 +229,16 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "withdraw",
-          outputs: [],
-          stateMutability: "nonpayable",
+          name: "votingActive",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
-        },
-        {
-          stateMutability: "payable",
-          type: "receive",
         },
       ],
       inheritedFunctions: {},

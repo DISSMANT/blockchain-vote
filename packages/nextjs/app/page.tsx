@@ -26,11 +26,33 @@ const Home: NextPage = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [winner, setWinner] = useState<Winner | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [votingActive, setVotingActive] = useState(true);
 
   const { data: ownerData } = useScaffoldReadContract({
     contractName: "YourContract",
     functionName: "owner",
   });
+
+  const { data: votingActiveData } = useScaffoldReadContract({
+    contractName: "YourContract",
+    functionName: "votingActive",
+  });
+
+  const { data: allCandidatesData, isLoading: isCandidatesLoading } = useScaffoldReadContract({
+    contractName: "YourContract",
+    functionName: "getAllCandidates",
+    watch: true,
+  });
+
+  const { data: winnerData, isLoading: isWinnerLoading } = useScaffoldReadContract({
+    contractName: "YourContract",
+    functionName: "getWinner",
+    watch: true,
+  });
+
+  const { writeContractAsync: addCandidateAsync, isMining: isAdding } = useScaffoldWriteContract("YourContract");
+  const { writeContractAsync: voteAsync, isMining: isVoting } = useScaffoldWriteContract("YourContract");
+  const { writeContractAsync: endVotingAsync, isMining: isEndingVoting } = useScaffoldWriteContract("YourContract");
 
   useEffect(() => {
     if (ownerData && connectedAddress) {
@@ -40,28 +62,19 @@ const Home: NextPage = () => {
     }
   }, [ownerData, connectedAddress]);
 
-  const { data: allCandidatesData, isLoading: isCandidatesLoading } = useScaffoldReadContract({
-    contractName: "YourContract",
-    functionName: "getAllCandidates",
-    // watch: true,
-  });
-
-  const { data: winnerData, isLoading: isWinnerLoading } = useScaffoldReadContract({
-    contractName: "YourContract",
-    functionName: "getWinner",
-    // watch: true,
-  });
-
-  const { writeContractAsync: addCandidateAsync, isMining: isAdding } = useScaffoldWriteContract("YourContract");
-  const { writeContractAsync: voteAsync, isMining: isVoting } = useScaffoldWriteContract("YourContract");
+  useEffect(() => {
+    if (votingActiveData !== undefined) {
+      setVotingActive(votingActiveData as boolean);
+    }
+  }, [votingActiveData]);
 
   useEffect(() => {
     if (allCandidatesData) {
-      // allCandidatesData - это массив объектов { name: string; voteCount: bigint }
-      const fetchedCandidates: Candidate[] = (allCandidatesData as Array<{ name: string; voteCount: bigint }>).map(
+      // allCandidatesData - это массив объектов { name: string; votes: bigint }
+      const fetchedCandidates: Candidate[] = (allCandidatesData as readonly { name: string; votes: bigint }[]).map(
         candidate => ({
           name: candidate.name,
-          votes: candidate.voteCount,
+          votes: candidate.votes,
         }),
       );
       setCandidates(fetchedCandidates);
@@ -104,6 +117,16 @@ const Home: NextPage = () => {
     }
   };
 
+  const handleEndVoting = async () => {
+    try {
+      await endVotingAsync({
+        functionName: "endVoting",
+      });
+    } catch (e) {
+      console.error("Ошибка при завершении голосования:", e);
+    }
+  };
+
   return (
     <>
       <div className="flex items-center flex-col flex-grow pt-10">
@@ -118,10 +141,26 @@ const Home: NextPage = () => {
             <p className="my-2 font-medium">Подключенный адрес:</p>
             <Address address={connectedAddress} />
           </div>
+          <p className="text-center text-lg">
+            Начните с редактирования{" "}
+            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
+              packages/nextjs/app/page.tsx
+            </code>
+          </p>
+          <p className="text-center text-lg">
+            Редактируйте ваш смарт-контракт{" "}
+            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
+              YourContract.sol
+            </code>{" "}
+            в{" "}
+            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
+              packages/hardhat/contracts
+            </code>
+          </p>
         </div>
 
-        {/* Форма добавления кандидата (только для владельца) */}
-        {isOwner && (
+        {/* Форма добавления кандидата (только для владельца и если голосование активно) */}
+        {isOwner && votingActive && (
           <div className="mt-8 w-full max-w-md">
             <h2 className="text-2xl mb-4">Добавить Кандидата</h2>
             <input
@@ -133,6 +172,15 @@ const Home: NextPage = () => {
             />
             <button className="btn btn-primary w-full" onClick={handleAddCandidate} disabled={isAdding}>
               {isAdding ? "Добавление..." : "Добавить Кандидата"}
+            </button>
+          </div>
+        )}
+
+        {/* Кнопка завершения голосования (только для владельца и если голосование активно) */}
+        {isOwner && votingActive && (
+          <div className="mt-4 w-full max-w-md">
+            <button className="btn btn-error w-full" onClick={handleEndVoting} disabled={isEndingVoting}>
+              {isEndingVoting ? "Завершение..." : "Завершить Голосование"}
             </button>
           </div>
         )}
@@ -149,20 +197,22 @@ const Home: NextPage = () => {
                   <span>
                     {index}. {candidate.name} — {candidate.votes.toString()} голосов
                   </span>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setSelectedCandidate(index)}
-                    disabled={isVoting}
-                  >
-                    {isVoting && selectedCandidate === index ? "Голосование..." : "Голосовать"}
-                  </button>
+                  {votingActive && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setSelectedCandidate(index)}
+                      disabled={isVoting}
+                    >
+                      {isVoting && selectedCandidate === index ? "Голосование..." : "Голосовать"}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
           ) : (
             <p>Кандидаты отсутствуют.</p>
           )}
-          {selectedCandidate !== null && (
+          {selectedCandidate !== null && votingActive && (
             <button className="btn btn-primary mt-4" onClick={handleVote} disabled={isVoting}>
               {isVoting ? "Голосование..." : "Подтвердить Голос"}
             </button>
